@@ -103,6 +103,8 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     W, labels = gen.sample_otf_single(is_training=True, cuda=torch.cuda.is_available())
     labels = labels.type(dtype_l)
 
+    print ('Num of edges: ', np.sum(W))
+
     if (args.generative_model == 'SBM_multiclass') and (args.n_classes == 2):
         labels = (labels + 1)/2
 
@@ -156,12 +158,19 @@ def train(gnn, logger, gen, n_classes=args.n_classes, iters=args.num_examples_tr
     loss_lst = np.zeros([iters])
     acc_lst = np.zeros([iters])
     for it in range(iters):
+        # W, labels = gen.sample_otf_single(is_training=True, cuda=torch.cuda.is_available())
+        # WW, x, WW_lg, y, P = get_lg_inputs(W, args.J)
+        # print ("Num of edges: ", np.sum(W))
         loss_single, acc_single = train_mcd_single(gnn, optimizer, logger, gen, n_classes, it)
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
+
+        if (it % 200 == 0):
+            test(gnn, logger, gen, args.n_classes, iters = 20)
     print ('Avg train loss', np.mean(loss_lst))
     print ('Avg train acc', np.mean(acc_lst))
+    print ('Std train acc', np.std(acc_lst))
 
 def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
@@ -172,8 +181,8 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
         labels = (labels + 1)/2
     WW, x, WW_lg, y, P = get_lg_inputs(W, args.J)
 
-    print ('WW', WW.shape)
-    print ('WW_lg', WW_lg.shape)
+    # print ('WW', WW.shape)
+    # print ('WW_lg', WW_lg.shape)
 
     if (torch.cuda.is_available()):
         WW.cuda()
@@ -231,6 +240,7 @@ def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
         torch.cuda.empty_cache()
     print ('Avg test loss', np.mean(loss_lst))
     print ('Avg test acc', np.mean(acc_lst))
+    print ('Std test acc', np.std(acc_lst))
 
 
 

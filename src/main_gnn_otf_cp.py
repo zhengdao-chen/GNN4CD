@@ -5,7 +5,7 @@ import numpy as np
 import os
 # import dependencies
 from data_generator_mod import Generator
-from load import get_lg_inputs
+from load import get_lg_inputs, get_gnn_inputs
 from model import GNN_bcd, GNN_multiclass
 from Logger import Logger
 import time
@@ -106,7 +106,7 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     if (args.generative_model == 'SBM_multiclass') and (args.n_classes == 2):
         labels = (labels + 1)/2
 
-    WW, x, WW_lg, y, P = get_lg_inputs(W, args.J)
+    WW, x = get_gnn_inputs(W, args.J)
 
     # print ('WW', WW.shape)
     # print ('WW_lg', WW_lg.shape)
@@ -114,9 +114,7 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     if (torch.cuda.is_available()):
         WW.cuda()
         x.cuda()
-        WW_lg.cuda()
-        y.cuda()
-        P.cuda()
+
     # print ('input', input)
     # pred = gnn(WW.type(dtype), x.type(dtype), WW_lg.type(dtype), y.type(dtype), P.type(dtype))
     pred = gnn(WW.type(dtype), x.type(dtype))
@@ -139,15 +137,12 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
     out = [it, loss_value, acc, args.edge_density,
-           args.noise, 'lGNN', elapsed]
+           args.noise, 'GNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
 
     del WW
-    del WW_lg
     del x
-    del y
-    del P
 
     return loss_value, acc
 
@@ -163,6 +158,7 @@ def train(gnn, logger, gen, n_classes=args.n_classes, iters=args.num_examples_tr
         torch.cuda.empty_cache()
     print ('Avg train loss', np.mean(loss_lst))
     print ('Avg train acc', np.mean(acc_lst))
+    print ('Std train acc', np.std(acc_lst))
 
 def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
@@ -171,17 +167,14 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
     labels = labels.type(dtype_l)
     if (args.generative_model == 'SBM_multiclass') and (args.n_classes == 2):
         labels = (labels + 1)/2
-    WW, x, WW_lg, y, P = get_lg_inputs(W, args.J)
+    WW, x = get_gnn_inputs(W, args.J)
 
     print ('WW', WW.shape)
-    print ('WW_lg', WW_lg.shape)
 
     if (torch.cuda.is_available()):
         WW.cuda()
         x.cuda()
-        WW_lg.cuda()
-        y.cuda()
-        P.cuda()
+        
     # print ('input', input)
     pred_single = gnn(WW.type(dtype), x.type(dtype))
     labels_single = labels
@@ -208,15 +201,12 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
     info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
     out = [iter, loss_value, acc_test, args.edge_density,
-           args.noise, 'lGNN', elapsed]
+           args.noise, 'GNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
 
     del WW
-    del WW_lg
     del x
-    del y
-    del P
 
     return loss_value, acc_test
 
@@ -232,6 +222,7 @@ def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
         torch.cuda.empty_cache()
     print ('Avg test loss', np.mean(loss_lst))
     print ('Avg test acc', np.mean(acc_lst))
+    print ('Std test acc', np.std(acc_lst))
 
 
 
