@@ -6,7 +6,7 @@ import os
 # import dependencies
 from data_generator_mod import Generator
 from load import get_lg_inputs
-from model import lGNN_multiclass
+from model_lua import lGNN_multiclass
 from Logger import Logger
 import time
 import matplotlib
@@ -85,11 +85,11 @@ args = parser.parse_args()
 if torch.cuda.is_available():
     dtype = torch.cuda.FloatTensor
     dtype_l = torch.cuda.LongTensor
-    # torch.cuda.manual_seed(0)
+    torch.cuda.manual_seed(42)
 else:
     dtype = torch.FloatTensor
     dtype_l = torch.LongTensor
-    # torch.manual_seed(1)
+    torch.manual_seed(42)
 
 batch_size = args.batch_size
 criterion = nn.CrossEntropyLoss()
@@ -140,7 +140,7 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
     out = [it, loss_value, acc, args.edge_density,
-           args.noise, 'lGNN', elapsed]
+           args.noise, 'LGNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
 
@@ -166,13 +166,19 @@ def train(gnn, logger, gen, n_classes=args.n_classes, iters=args.num_examples_tr
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
 
-        if (it % 200 == 0):
-            test(gnn, logger, gen, args.n_classes, iters = 20)
-    print ('Avg train loss', np.mean(loss_lst))
-    print ('Avg train acc', np.mean(acc_lst))
-    print ('Std train acc', np.std(acc_lst))
+        if (it % 100 == 0) and (it >= 100):
+            # print ('Testing at check_pt begins')
+            print ('Check_pt at iteration ' + str(it) + ' :')
+            # test(gnn, logger, gen, args.n_classes, iters = 20)
+            print ('Avg train loss', np.mean(loss_lst[it-100:it]))
+            print ('Avg train acc', np.mean(acc_lst[it-100:it]))
+            print ('Std train acc', np.std(acc_lst[it-100:it]))
 
-def test_mcd_single(gnn, logger, gen, n_classes, iter):
+    print ('Final avg train loss', np.mean(loss_lst))
+    print ('Final avg train acc', np.mean(acc_lst))
+    print ('Final std train acc', np.std(acc_lst))
+
+def test_mcd_single(gnn, logger, gen, n_classes, it):
 
     start = time.time()
     W, labels = gen.sample_otf_single(is_training=False, cuda=torch.cuda.is_available())
@@ -199,7 +205,7 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
     elapsed = time.time() - start
     # if (it % args.print_freq == 0):
-    #     info = ['iter', 'avg loss', 'avg acc', 'edge_density',
+    #     info = ['it', 'avg loss', 'avg acc', 'edge_density',
     #             'noise', 'model', 'elapsed']
     #     out = [it, loss_test, acc_test, args.edge_density,
     #            args.noise, 'lGNN', elapsed]
@@ -215,8 +221,8 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
     info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
-    out = [iter, loss_value, acc_test, args.edge_density,
-           args.noise, 'lGNN', elapsed]
+    out = [it, loss_value, acc_test, args.edge_density,
+           args.noise, 'LGNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
 
@@ -238,6 +244,7 @@ def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
+    print ('Testing results:')
     print ('Avg test loss', np.mean(loss_lst))
     print ('Avg test acc', np.mean(acc_lst))
     print ('Std test acc', np.std(acc_lst))
@@ -245,6 +252,8 @@ def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
 
 
 if __name__ == '__main__':
+
+    print ('main file starts here')
 
     logger = Logger(args.path_logger)
     logger.write_settings(args)
