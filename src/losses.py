@@ -1,10 +1,8 @@
 import numpy as np
 import math
 import os
-# import dependencies
 import time
 
-#Pytorch requirements
 import unicodedata
 import string
 import re

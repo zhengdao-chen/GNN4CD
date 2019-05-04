@@ -4,9 +4,9 @@
 import numpy as np
 import os
 # import dependencies
-from data_generator_mod import Generator
+from data_generator import Generator
 from load import get_lg_inputs
-from model import lGNN_multiclass
+from models import lGNN_multiclass
 from Logger import Logger
 import time
 import matplotlib
@@ -27,9 +27,6 @@ from torch.autograd import Variable
 from torch import optim
 import torch.nn.functional as F
 from losses import compute_loss_multiclass, compute_accuracy_multiclass
-# import losses
-
-from Logger import compute_accuracy_bcd
 
 parser = argparse.ArgumentParser()
 
@@ -85,11 +82,11 @@ args = parser.parse_args()
 if torch.cuda.is_available():
     dtype = torch.cuda.FloatTensor
     dtype_l = torch.cuda.LongTensor
-    # torch.cuda.manual_seed(0)
+    torch.cuda.manual_seed(42)
 else:
     dtype = torch.FloatTensor
     dtype_l = torch.LongTensor
-    # torch.manual_seed(1)
+    torch.manual_seed(42)
 
 batch_size = args.batch_size
 criterion = nn.CrossEntropyLoss()
@@ -140,7 +137,7 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
     out = [it, loss_value, acc, args.edge_density,
-           args.noise, 'lGNN', elapsed]
+           args.noise, 'LGNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
 
@@ -166,13 +163,19 @@ def train(gnn, logger, gen, n_classes=args.n_classes, iters=args.num_examples_tr
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
 
-        if (it % 200 == 0):
-            test(gnn, logger, gen, args.n_classes, iters = 20)
-    print ('Avg train loss', np.mean(loss_lst))
-    print ('Avg train acc', np.mean(acc_lst))
-    print ('Std train acc', np.std(acc_lst))
+        if (it % 100 == 0) and (it >= 100):
+            # print ('Testing at check_pt begins')
+            print ('Check_pt at iteration ' + str(it) + ' :')
+            # test(gnn, logger, gen, args.n_classes, iters = 20)
+            print ('Avg train loss', np.mean(loss_lst[it-100:it]))
+            print ('Avg train acc', np.mean(acc_lst[it-100:it]))
+            print ('Std train acc', np.std(acc_lst[it-100:it]))
 
-def test_mcd_single(gnn, logger, gen, n_classes, iter):
+    print ('Final avg train loss', np.mean(loss_lst))
+    print ('Final avg train acc', np.mean(acc_lst))
+    print ('Final std train acc', np.std(acc_lst))
+
+def test_mcd_single(gnn, logger, gen, n_classes, it):
 
     start = time.time()
     W, labels = gen.sample_otf_single(is_training=False, cuda=torch.cuda.is_available())
@@ -199,7 +202,7 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
     elapsed = time.time() - start
     # if (it % args.print_freq == 0):
-    #     info = ['iter', 'avg loss', 'avg acc', 'edge_density',
+    #     info = ['it', 'avg loss', 'avg acc', 'edge_density',
     #             'noise', 'model', 'elapsed']
     #     out = [it, loss_test, acc_test, args.edge_density,
     #            args.noise, 'lGNN', elapsed]
@@ -215,8 +218,8 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
     info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
-    out = [iter, loss_value, acc_test, args.edge_density,
-           args.noise, 'lGNN', elapsed]
+    out = [it, loss_value, acc_test, args.edge_density,
+           args.noise, 'LGNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
 
@@ -238,6 +241,7 @@ def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
+    print ('Testing results:')
     print ('Avg test loss', np.mean(loss_lst))
     print ('Avg test acc', np.mean(acc_lst))
     print ('Std test acc', np.std(acc_lst))
@@ -245,6 +249,8 @@ def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
 
 
 if __name__ == '__main__':
+
+    print ('main file starts here')
 
     logger = Logger(args.path_logger)
     logger.write_settings(args)
@@ -286,13 +292,7 @@ if __name__ == '__main__':
             if torch.cuda.is_available():
                 gnn.cuda()
             print ('Training begins')
-            # train_bcd(gnn, logger, gen)
-            # print ('Saving gnn ' + filename)
-            # if torch.cuda.is_available():
-            #     torch.save(gnn.cpu(), path_plus_name)
-            #     gnn.cuda()
-            # else:
-            #     torch.save(gnn, path_plus_name)
+
 
     elif (args.mode == 'train'):
         filename = args.filename_existing_gnn
@@ -302,10 +302,6 @@ if __name__ == '__main__':
             gnn = torch.load(path_plus_name)
             filename = filename + '_Ntr' + str(args.N_train) + '_num' + str(args.num_examples_train)
             path_plus_name = os.path.join(args.path_gnn, filename)
-        # if (os.path.exists(path_plus_name)):
-        #     print ('loading gnn ' + filename)
-        #     gnn = torch.load(path_plus_name)
-        # else:
         else:
             print ('No such a gnn exists; creating a brand new one')
             filename = 'lgnn_J' + str(args.J) + '_lyr' + str(args.num_layers) + '_Ntr' + str(args.N_train) + '_num' + str(args.num_examples_train)
@@ -319,9 +315,8 @@ if __name__ == '__main__':
             gnn.cuda()
         print ('Training begins')
         if (args.generative_model == 'SBM'):
-            train_bcd(gnn, logger, gen)
+            train(gnn, logger, gen, 2)
         elif (args.generative_model == 'SBM_multiclass'):
-            # train_mcd(gnn, logger, gen, args.n_classes)
             train(gnn, logger, gen, args.n_classes)
         print ('Saving gnn ' + filename)
         if torch.cuda.is_available():
@@ -330,61 +325,12 @@ if __name__ == '__main__':
         else:
             torch.save(gnn, path_plus_name)
 
-    elif (args.mode == 'search_opt_iters'):
-        iters_per_check = 600
-
-        for check_pt in range(int(args.num_examples_train / iters_per_check) + 1):
-            filename = args.filename_existing_gnn
-            path_plus_name = os.path.join(args.path_gnn, filename)
-            if ((filename != '') and (os.path.exists(path_plus_name))):
-                print ('Loading gnn ' + filename)
-                gnn = torch.load(path_plus_name)
-                # gnn = GNN_bcd(args.num_features, args.num_layers, args.J + 2)
-
-                filename = filename + '_Ntr' + str(gen.N_train) + '_it' + str(iters_per_check * (check_pt))
-                path_plus_name = os.path.join(args.path_gnn, filename)
-            else:
-                print ('creating a brand new gnn')
-                if (args.generative_model == 'SBM'):
-                    gnn = lGNN_multiclass(args.num_features, args.num_layers, args.J + 2)
-                elif (args.generative_model == 'SBM_multiclass'):
-                    gnn = lGNN_multiclass(args.num_features, args.num_layers, args.J + 2, n_classes=args.n_classes)
-                filename = 'lgnn_J' + str(args.J) + '_lyr' + str(args.num_layers) + '_Ntr' + str(gen.N_train) + '_it' + str(iters_per_check * (check_pt))
-                path_plus_name = os.path.join(args.path_gnn, filename)
-            if torch.cuda.is_available():
-                gnn.cuda()
-            print ('Training begins for num_iters = ' + str(iters_per_check * (check_pt)))
-            if (args.generative_model == 'SBM'):
-                train_bcd(gnn, logger, gen)
-            elif (args.generative_model == 'SBM_multiclass'):
-                train_mcd(gnn, logger, gen, args.n_classes)
-            # print ('Saving gnn ' + filename)
-            # if torch.cuda.is_available():
-            #     torch.save(gnn.cpu(), path_plus_name)
-            #     gnn.cuda()
-            # else:
-            #     torch.save(gnn, path_plus_name)
-
-            print ('Testing the GNN at check_pt ' + str(check_pt))
-            test_mcd(gnn, logger, gen, args.n_classes)
-    #
-    # if torch.cuda.is_available():
-    #     gnn.cuda()
-    #
-    # train_bcd(gnn, logger, gen)
-    #
-    # if ((args.mode == 'train') or (not os.path.exists(path_plus_name))):
-    #     print ('saving gnn ' + filename)
-    #     torch.save(gnn, path_plus_name)
-
     print ('Testing the GNN:')
     if args.eval_vs_train:
-        gnn.eval()
         print ('model status: eval')
+        gnn.eval()
     else:
         print ('model status: train')
         gnn.train()
-    # test(siamese_gnn, logger, gen)
-    # for i in range(100):
-    # test_mcd(gnn, logger, gen, args.n_classes, args.eval_vs_train)
+
     test(gnn, logger, gen, args.n_classes)

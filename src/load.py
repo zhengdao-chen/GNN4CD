@@ -1,16 +1,10 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-
 import numpy as np
 import os
-# import dependencies
 import time
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
-import networkx
 
-#Pytorch requirements
 import unicodedata
 import string
 import re
@@ -101,7 +95,7 @@ def compute_operators_noD(W, J):
     # print ('W size', W.size())
     # operators: {Id, W, W^2, ..., W^{J-1}, D, U}
     d = W.sum(1)
-    D = np.diag(d)
+    # D = np.diag(d)
     QQ = W.copy()
     WW = np.zeros([N, N, J + 1])
     WW[:, :, 0] = np.eye(N)
@@ -111,6 +105,46 @@ def compute_operators_noD(W, J):
         QQ = np.minimum(np.dot(QQ, QQ), np.ones(QQ.shape))
     # WW[:, :, J] = np.ones((N, N)) * 1.0 / float(N)
     WW = np.reshape(WW, [N, N, J + 1])
+    x = np.reshape(d, [N, 1])
+    return WW, x
+
+def compute_operators_noI(W, J):
+    N = W.shape[0]
+    # print ('W', W)
+    # print ('W size', W.size())
+    # operators: {Id, W, W^2, ..., W^{J-1}, D, U}
+    d = W.sum(1)
+    D = np.diag(d)
+    QQ = W.copy()
+    WW = np.zeros([N, N, J + 1])
+    WW[:, :, 0] = D
+    for j in range(J):
+        WW[:, :, j + 1] = QQ.copy()
+        # QQ = np.dot(QQ, QQ)
+        QQ = np.minimum(np.dot(QQ, QQ), np.ones(QQ.shape))
+    # WW[:, :, J + 1] = D
+    # WW[:, :, J + 1] = np.ones((N, N)) * 1.0 / float(N)
+    WW = np.reshape(WW, [N, N, J + 1])
+    x = np.reshape(d, [N, 1])
+    return WW, x
+
+def compute_operators_noIorD(W, J):
+    N = W.shape[0]
+    # print ('W', W)
+    # print ('W size', W.size())
+    # operators: {Id, W, W^2, ..., W^{J-1}, D, U}
+    d = W.sum(1)
+    D = np.diag(d)
+    QQ = W.copy()
+    WW = np.zeros([N, N, J])
+    # WW[:, :, 0] = D
+    for j in range(J):
+        WW[:, :, j] = QQ.copy()
+        # QQ = np.dot(QQ, QQ)
+        QQ = np.minimum(np.dot(QQ, QQ), np.ones(QQ.shape))
+    # WW[:, :, J + 1] = D
+    # WW[:, :, J + 1] = np.ones((N, N)) * 1.0 / float(N)
+    WW = np.reshape(WW, [N, N, J])
     x = np.reshape(d, [N, 1])
     return WW, x
 
@@ -216,6 +250,27 @@ def get_lg_inputs(W, J):
     P = Variable(torch.from_numpy(P).unsqueeze(0), volatile=False)
     return WW, x, WW_lg, y, P
 
+def get_lg_inputs_noI(W, J):
+    if (W.ndim == 3):
+        W = W[0, :, :]
+    WW, x = compute_operators_noI(W, J)
+    # W_lg = get_W_lg(W)
+    # W_lg = get_NB(W)
+    W_lg = get_NB_2(W)
+    WW_lg, y = compute_operators_noI(W_lg, J)
+    P = get_P(W)
+    x = x.astype(float)
+    y = y.astype(float)
+    WW = WW.astype(float)
+    WW_lg = WW_lg.astype(float)
+    P = P.astype(float)
+    WW = Variable(torch.from_numpy(WW).unsqueeze(0), volatile=False)
+    x = Variable(torch.from_numpy(x).unsqueeze(0), volatile=False)
+    WW_lg = Variable(torch.from_numpy(WW_lg).unsqueeze(0), volatile=False)
+    y = Variable(torch.from_numpy(y).unsqueeze(0), volatile=False)
+    P = Variable(torch.from_numpy(P).unsqueeze(0), volatile=False)
+    return WW, x, WW_lg, y, P
+
 def get_lg_inputs_noD(W, J):
     if (W.ndim == 3):
         W = W[0, :, :]
@@ -223,6 +278,26 @@ def get_lg_inputs_noD(W, J):
     # W_lg = get_W_lg(W)
     W_lg = get_NB_2(W)
     WW_lg, y = compute_operators_noD(W_lg, J)
+    P = get_P(W)
+    x = x.astype(float)
+    y = y.astype(float)
+    WW = WW.astype(float)
+    WW_lg = WW_lg.astype(float)
+    P = P.astype(float)
+    WW = Variable(torch.from_numpy(WW).unsqueeze(0), volatile=False)
+    x = Variable(torch.from_numpy(x).unsqueeze(0), volatile=False)
+    WW_lg = Variable(torch.from_numpy(WW_lg).unsqueeze(0), volatile=False)
+    y = Variable(torch.from_numpy(y).unsqueeze(0), volatile=False)
+    P = Variable(torch.from_numpy(P).unsqueeze(0), volatile=False)
+    return WW, x, WW_lg, y, P
+
+def get_lg_inputs_noIorD(W, J):
+    if (W.ndim == 3):
+        W = W[0, :, :]
+    WW, x = compute_operators_noIorD(W, J)
+    # W_lg = get_W_lg(W)
+    W_lg = get_NB_2(W)
+    WW_lg, y = compute_operators_noIorD(W_lg, J)
     P = get_P(W)
     x = x.astype(float)
     y = y.astype(float)
@@ -267,6 +342,22 @@ def get_gnn_inputs(W, J):
 def get_gnn_inputs_noD(W, J):
     W = W[0, :, :]
     WW, x = compute_operators_noD(W, J)
+    WW = WW.astype(float)
+    WW = Variable(torch.from_numpy(WW).unsqueeze(0), volatile=False)
+    x = Variable(torch.from_numpy(x).unsqueeze(0), volatile=False)
+    return WW, x
+
+def get_gnn_inputs_noI(W, J):
+    W = W[0, :, :]
+    WW, x = compute_operators_noI(W, J)
+    WW = WW.astype(float)
+    WW = Variable(torch.from_numpy(WW).unsqueeze(0), volatile=False)
+    x = Variable(torch.from_numpy(x).unsqueeze(0), volatile=False)
+    return WW, x
+
+def get_gnn_inputs_noIorD(W, J):
+    W = W[0, :, :]
+    WW, x = compute_operators_noIorD(W, J)
     WW = WW.astype(float)
     WW = Variable(torch.from_numpy(WW).unsqueeze(0), volatile=False)
     x = Variable(torch.from_numpy(x).unsqueeze(0), volatile=False)
