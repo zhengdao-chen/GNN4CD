@@ -1,16 +1,11 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-
 import numpy as np
 import os
-# import dependencies
 import time
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import networkx
 
-#Pytorch requirements
 import unicodedata
 import string
 import re
@@ -227,34 +222,3 @@ class Generator(object):
         W = np.expand_dims(W, 0)
         return W, labels
 
-
-
-if __name__ == '__main__':
-    ###################### Test Generator module ##############################
-    path = '/home/chenzh/tmp/'
-    gen = Generator(path)
-    gen.num_examples_train = 10
-    gen.num_examples_test = 10
-    gen.N = 50
-    # gen.generative_model = 'Regular'
-    gen.generative_model = 'SBM'
-    gen.load_dataset()
-    g1, g2 = gen.sample_batch(32, cuda=False)
-    print(g1[0].size())
-    print(g1[1][0].data.cpu().numpy())
-    W = g1[0][0, :, :, 1]
-    W_noise = g2[0][0, :, :, 1]
-    print(W, W.size())
-    print(W_noise.size(), W_noise)
-    ################### Test graph generators networkx ########################
-    # path = '/home/anowak/tmp/'
-    # gen = Generator(path)
-    # p = 0.2
-    # N = 50
-    # # W = gen.ErdosRenyi_netx(p, N)
-    # W = gen.RegularGraph_netx(3, N)
-    # G = networkx.from_numpy_matrix(W)
-    # networkx.draw(G)
-    # # plt.draw(G)
-    # plt.savefig('/home/anowak/tmp/prova.png')
-    # print('W', W)
