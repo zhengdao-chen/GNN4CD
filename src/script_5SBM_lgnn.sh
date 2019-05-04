@@ -1,5 +1,4 @@
 python3 main_lgnn.py \
---path_logger '' \
 --path_gnn '' \
 --filename_existing_gnn '' \
 --num_examples_train 6000 \

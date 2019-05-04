@@ -7,7 +7,6 @@ import os
 from data_generator import Generator
 from load import get_lg_inputs, get_gnn_inputs
 from models import GNN_bcd, GNN_multiclass
-from Logger import Logger
 import time
 import matplotlib
 matplotlib.use('Agg')
@@ -52,7 +51,6 @@ parser.add_argument('--generative_model', nargs='?', const=1, type=str,
                     default='ErdosRenyi')
 parser.add_argument('--batch_size', nargs='?', const=1, type=int, default=1)
 parser.add_argument('--mode', nargs='?', const=1, type=str, default='train')
-parser.add_argument('--path_logger', nargs='?', const=1, type=str, default='')
 parser.add_argument('--path_gnn', nargs='?', const=1, type=str, default='')
 parser.add_argument('--filename_existing_gnn', nargs='?', const=1, type=str, default='')
 parser.add_argument('--print_freq', nargs='?', const=1, type=int, default=100)
@@ -96,7 +94,7 @@ template2 = '{:<10} {:<10.5f} {:<10.5f} {:<15} {:<10} {:<10} {:<10.3f} \n'
 template3 = '{:<10} {:<10} {:<10} '
 template4 = '{:<10} {:<10.5f} {:<10.5f} \n'
 
-def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
+def train_mcd_single(gnn, optimizer, gen, n_classes, it):
     start = time.time()
     W, labels = gen.sample_otf_single(is_training=True, cuda=torch.cuda.is_available())
     labels = labels.type(dtype_l)
@@ -132,7 +130,7 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
     else:
         loss_value = float(loss.data.numpy())
 
-    info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
+    info = ['iter', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
     out = [it, loss_value, acc, args.edge_density,
            args.noise, 'GNN', elapsed]
@@ -144,13 +142,13 @@ def train_mcd_single(gnn, optimizer, logger, gen, n_classes, it):
 
     return loss_value, acc
 
-def train(gnn, logger, gen, n_classes=args.n_classes, iters=args.num_examples_train):
+def train(gnn, gen, n_classes=args.n_classes, iters=args.num_examples_train):
     gnn.train()
     optimizer = torch.optim.Adamax(gnn.parameters(), lr=args.lr)
     loss_lst = np.zeros([iters])
     acc_lst = np.zeros([iters])
     for it in range(iters):
-        loss_single, acc_single = train_mcd_single(gnn, optimizer, logger, gen, n_classes, it)
+        loss_single, acc_single = train_mcd_single(gnn, optimizer, gen, n_classes, it)
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
@@ -158,7 +156,7 @@ def train(gnn, logger, gen, n_classes=args.n_classes, iters=args.num_examples_tr
     print ('Avg train acc', np.mean(acc_lst))
     print ('Std train acc', np.std(acc_lst))
 
-def test_mcd_single(gnn, logger, gen, n_classes, iter):
+def test_mcd_single(gnn, gen, n_classes, it):
 
     start = time.time()
     W, labels = gen.sample_otf_single(is_training=False, cuda=torch.cuda.is_available())
@@ -196,9 +194,9 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
     else:
         loss_value = float(loss_test.data.numpy())
 
-    info = ['epoch', 'avg loss', 'avg acc', 'edge_density',
+    info = ['iter', 'avg loss', 'avg acc', 'edge_density',
             'noise', 'model', 'elapsed']
-    out = [iter, loss_value, acc_test, args.edge_density,
+    out = [it, loss_value, acc_test, args.edge_density,
            args.noise, 'GNN', elapsed]
     print(template1.format(*info))
     print(template2.format(*out))
@@ -208,13 +206,13 @@ def test_mcd_single(gnn, logger, gen, n_classes, iter):
 
     return loss_value, acc_test
 
-def test(gnn, logger, gen, n_classes, iters=args.num_examples_test):
+def test(gnn, gen, n_classes, iters=args.num_examples_test):
     gnn.train()
     loss_lst = np.zeros([iters])
     acc_lst = np.zeros([iters])
     for it in range(iters):
         # inputs, labels, W = gen.sample_single(it, cuda=torch.cuda.is_available(), is_training=False)
-        loss_single, acc_single = test_mcd_single(gnn, logger, gen, n_classes, it)
+        loss_single, acc_single = test_mcd_single(gnn, gen, n_classes, it)
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
@@ -229,9 +227,6 @@ def count_parameters(model):
 
 if __name__ == '__main__':
     # print (args.eval_vs_train)
-
-    logger = Logger(args.path_logger)
-    logger.write_settings(args)
 
     ## One fixed generator
     gen = Generator()
@@ -295,9 +290,9 @@ if __name__ == '__main__':
             gnn.cuda()
         print ('Training begins')
         if (args.generative_model == 'SBM'):
-            train(gnn, logger, gen, 2)
+            train(gnn, gen, 2)
         elif (args.generative_model == 'SBM_multiclass'):
-            train(gnn, logger, gen, args.n_classes)
+            train(gnn, gen, args.n_classes)
         print ('Saving gnn ' + filename)
         if torch.cuda.is_available():
             torch.save(gnn.cpu(), path_plus_name)
@@ -314,7 +309,7 @@ if __name__ == '__main__':
         print ('model status: train')
         gnn.train()
 
-    test(gnn, logger, gen, args.n_classes)
+    test(gnn, gen, args.n_classes)
 
     print ('total num of params:', count_parameters(gnn))
 
