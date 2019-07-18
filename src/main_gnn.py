@@ -1,9 +1,5 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-
 import numpy as np
 import os
-# import dependencies
 from data_generator import Generator
 from load import get_lg_inputs, get_gnn_inputs
 from models import GNN_bcd, GNN_multiclass
@@ -12,7 +8,6 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
-#Pytorch requirements
 import unicodedata
 import string
 import re
