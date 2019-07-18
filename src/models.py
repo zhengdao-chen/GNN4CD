@@ -1,10 +1,5 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-
 import matplotlib
 matplotlib.use('Agg')
-
-# Pytorch requirements
 import unicodedata
 import string
 import re
@@ -100,6 +95,7 @@ class gnn_atomic(nn.Module):
         x = x.view(*x_size[:-1], self.num_outputs)
         return WW, x
 
+    
 class gnn_atomic_final(nn.Module):
     def __init__(self, feature_maps, J, n_classes):
         super(gnn_atomic_final, self).__init__()
@@ -116,7 +112,6 @@ class gnn_atomic_final(nn.Module):
         # x = F.tanh(x) # added for last layer
         x = x.view(*x_size[:-1], self.num_outputs)
         return WW, x
-
 
 
 class gnn_atomic_lg(nn.Module):
@@ -212,86 +207,6 @@ class gnn_atomic_lg(nn.Module):
 
         return WW, x_output, WW_lg, y_output, P
 
-# class gnn_atomic_lg(nn.Module):
-#     def __init__(self, feature_maps, J):
-#         super(gnn_atomic_lg, self).__init__()
-#         self.num_inputs = J*feature_maps[0]
-#         self.num_inputs_2 = 2 * feature_maps[1]
-#         # self.num_inputs_3 = 4 * feature_maps[2]
-#         self.num_outputs = feature_maps[2]
-#         self.fcx2x_1 = nn.Linear(self.num_inputs, self.num_outputs // 2)
-#         self.fcy2x_1 = nn.Linear(self.num_inputs_2, self.num_outputs // 2)
-#         self.fcx2x_2 = nn.Linear(self.num_inputs, self.num_outputs - self.num_outputs // 2)
-#         self.fcy2x_2 = nn.Linear(self.num_inputs_2, self.num_outputs - self.num_outputs // 2)
-#         self.fcx2y_1 = nn.Linear(self.num_inputs_2, self.num_outputs // 2)
-#         self.fcy2y_1 = nn.Linear(self.num_inputs, self.num_outputs // 2)
-#         self.fcx2y_2 = nn.Linear(self.num_inputs_2, self.num_outputs - self.num_outputs // 2)
-#         self.fcy2y_2 = nn.Linear(self.num_inputs, self.num_outputs - self.num_outputs // 2)
-#         self.bn2d_x = nn.BatchNorm2d(self.num_outputs)
-#         self.bn2d_y = nn.BatchNorm2d(self.num_outputs)
-
-#     def forward(self, WW, x, WW_lg, xd, P):
-#         # print ('W size', W.size())
-#         # print ('x size', input[1].size())
-#         xa1 = GMul(WW, x) # out has size (bs, N, num_inputs)
-#         # x2x_size = xa1.size()
-#         # # print (x_size)
-#         # x2x = x2x.contiguous()
-#         # x2x = x2x.view(-1, self.num_inputs)
-#         # # print (x.size()) 
-#         # # print ('x2x', x2x)
-#         # x2x = x2x.type(dtype)
-
-#         # y2x = torch.bmm(P, y)
-#         xb1 = GMul(P, xd)
-#         # y2x_size = y2x.size()
-#         # y2x = y2x.contiguous()
-#         # y2x = y2x.view(-1, self.num_inputs_2)
-
-#         # y2x = y2x.type(dtype)
-
-#         # x1 = torch.cat([xa1, xb1], 2)
-#         # xy2x = x2x + y2x 
-#         xy2x = F.relu(self.fcx2x_1(x2x) + self.fcy2x_1(y2x)) # has size (bs*N, num_outputs)
-
-#         xy2x_l = self.fcx2x_2(x2x) + self.fcy2x_2(y2x)
-#         x_cat = torch.cat((xy2x, xy2x_l), 1)
-#         # x_output = self.bn2d_x(x_cat)
-#         x_output = self.bn2d_x(x_cat.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
-
-#         x_output = x_output.view(*x2x_size[:-1], self.num_outputs)
-
-#         # print ('WW_lg shape', WW_lg.shape)
-#         # print ('y shape', y.shape)
-#         y2y = GMul(WW_lg, y)
-#         y2y_size = y2y.size()
-#         y2y = y2y.contiguous()
-#         y2y = y2y.view(-1, self.num_inputs)
-
-#         y2y = y2y.type(dtype)
-
-#         # x2y = torch.bmm(torch.t(P), x)
-#         x2y = GMul(torch.transpose(P, 2, 1), x)
-#         x2y_size = x2y.size()
-#         x2y = x2y.contiguous()
-#         x2y = x2y.view(-1, self.num_inputs_2)
-
-#         x2y = x2y.type(dtype)
-
-#         # xy2y = x2y + y2y
-#         xy2y = F.relu(self.fcx2y_1(x2y) + self.fcy2y_1(y2y))
-
-#         xy2y_l = self.fcx2y_2(x2y) + self.fcy2y_2(y2y)
-
-#         y_cat = torch.cat((xy2y, xy2y_l), 1)
-#         # y_output = self.bn2d_x(y_cat)
-#         y_output = self.bn2d_y(y_cat.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
-
-#         y_output = y_output.view(*y2y_size[:-1], self.num_outputs)
-
-#         # WW = WW.type(dtype)
-
-#         return WW, x_output, WW_lg, y_output, P
 
 class gnn_atomic_lg_final(nn.Module):
     def __init__(self, feature_maps, J, n_classes):
@@ -418,46 +333,3 @@ class GNN_multiclass(nn.Module):
             cur = self._modules['layer{}'.format(i+1)](*cur)
         out = self.layerlast(*cur)
         return out[1]
-
-
-
-if __name__ == '__main__':
-    # test modules
-    bs =  4
-    num_features = 10
-    num_layers = 5
-    N = 8
-    x = torch.ones((bs, N, num_features))
-    W1 = torch.eye(N).unsqueeze(0).unsqueeze(-1).expand(bs, N, N, 1)
-    W2 = torch.ones(N).unsqueeze(0).unsqueeze(-1).expand(bs, N, N, 1)
-    J = 2
-    W = torch.cat((W1, W2), 3)
-    input = [Variable(W), Variable(x)]
-    ######################### test gmul ##############################
-    # feature_maps = [num_features, num_features, num_features]
-    # out = gmul(input)
-    # print(out[0, :, num_features:])
-    ######################### test gconv ##############################
-    # feature_maps = [num_features, num_features, num_features]
-    # gconv = Gconv(feature_maps, J)
-    # _, out = gconv(input)
-    # print(out.size())
-    ######################### test gnn ##############################
-    # x = torch.ones((bs, N, 1))
-    # input = [Variable(W), Variable(x)]
-    # gnn = GNN(num_features, num_layers, J)
-    # out = gnn(input)
-    # print(out.size())
-    ######################### test siamese gnn ##############################
-    x = torch.ones((bs, N, 1))
-    input1 = [Variable(W), Variable(x)]
-    input2 = [Variable(W.clone()), Variable(x.clone())]
-    siamese_gnn = Siamese_GNN(num_features, num_layers, J)
-    out = siamese_gnn(input1, input2)
-    print(out.size())
-    print(out)
-
-    gnn = GNN_bcd(num_features, num_layers, 2)
-    out=gnn(input1)
-    print(out.size())
-    print(out)
