@@ -2,7 +2,7 @@ import numpy as np
 import os
 from data_generator import Generator
 from load import get_lg_inputs, get_gnn_inputs
-from models import GNN_bcd, GNN_multiclass
+from models import GNN_multiclass
 import time
 import matplotlib
 matplotlib.use('Agg')
