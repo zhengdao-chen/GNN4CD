@@ -3,6 +3,6 @@ Graph Neural Networks and Line Graph Neural Networks for community detection in 
 
 Here is [the latest version of the paper](https://openreview.net/pdf?id=H1g0Z3A9Fm) on openreview. 
 
-The implementation is in Python with Pytorch, and partially adapted from https://github.com/alexnowakvila/QAP_pt.
+The implementation is in Python (3.6) with Pytorch (0.3.1), and partially adapted from https://github.com/alexnowakvila/QAP_pt.
 
 Running [_script_5SBM_gnn.sh_](https://github.com/zhengdao-chen/GNN4CD/blob/master/src/script_5SBM_gnn.sh) and [_script_5SBM_lgnn.sh_](https://github.com/zhengdao-chen/GNN4CD/blob/master/src/script_5SBM_lgnn.sh) will perform the experiments of community detection for 5-class dissortive stochastic block models using a graph neural network (GNN) and a line graph neural network (LGNN), respectively.
