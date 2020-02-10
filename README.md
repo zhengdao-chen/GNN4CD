@@ -1,5 +1,5 @@
 # Graph neural networks for community detection (GNN4CD)
-Graph Neural Networks and Line Graph Neural Networks for community detection in graphs, as described in the paper **_Supervised community detection with graph neural networks_** by Zhengdao Chen, Joan Bruna and Lisha Li, which appeared in ICLR 2019. 
+Graph Neural Networks and Line Graph Neural Networks for community detection in graphs, as described in the paper **_Supervised community detection with graph neural networks_** by Zhengdao Chen, Lisha Li and Joan Bruna, which appeared in ICLR 2019. 
 
 Here is [the latest version of the paper](https://openreview.net/pdf?id=H1g0Z3A9Fm) on openreview. 
 
