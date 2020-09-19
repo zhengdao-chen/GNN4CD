@@ -4,14 +4,6 @@ from data_generator import Generator
 from load import get_lg_inputs, get_gnn_inputs
 from models import GNN_multiclass
 import time
-import matplotlib
-matplotlib.use('Agg')
-from matplotlib import pyplot as plt
-
-import unicodedata
-import string
-import re
-import random
 import argparse
 
 import torch
@@ -89,7 +81,7 @@ template2 = '{:<10} {:<10.5f} {:<10.5f} {:<15} {:<10} {:<10} {:<10.3f} \n'
 template3 = '{:<10} {:<10} {:<10} '
 template4 = '{:<10} {:<10.5f} {:<10.5f} \n'
 
-def train_mcd_single(gnn, optimizer, gen, n_classes, it):
+def train_single(gnn, optimizer, gen, n_classes, it):
     start = time.time()
     W, labels = gen.sample_otf_single(is_training=True, cuda=torch.cuda.is_available())
     labels = labels.type(dtype_l)
@@ -99,21 +91,16 @@ def train_mcd_single(gnn, optimizer, gen, n_classes, it):
 
     WW, x = get_gnn_inputs(W, args.J)
 
-    # print ('WW', WW.shape)
-    # print ('WW_lg', WW_lg.shape)
-
     if (torch.cuda.is_available()):
         WW.cuda()
         x.cuda()
 
-    # print ('input', input)
-    # pred = gnn(WW.type(dtype), x.type(dtype), WW_lg.type(dtype), y.type(dtype), P.type(dtype))
     pred = gnn(WW.type(dtype), x.type(dtype))
 
     loss = compute_loss_multiclass(pred, labels, n_classes)
     gnn.zero_grad()
     loss.backward()
-    nn.utils.clip_grad_norm(gnn.parameters(), args.clip_grad_norm)
+    nn.utils.clip_grad_norm_(gnn.parameters(), args.clip_grad_norm)
     optimizer.step()
 
     acc = compute_accuracy_multiclass(pred, labels, n_classes)
@@ -143,7 +130,7 @@ def train(gnn, gen, n_classes=args.n_classes, iters=args.num_examples_train):
     loss_lst = np.zeros([iters])
     acc_lst = np.zeros([iters])
     for it in range(iters):
-        loss_single, acc_single = train_mcd_single(gnn, optimizer, gen, n_classes, it)
+        loss_single, acc_single = train_single(gnn, optimizer, gen, n_classes, it)
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
@@ -151,7 +138,7 @@ def train(gnn, gen, n_classes=args.n_classes, iters=args.num_examples_train):
     print ('Avg train acc', np.mean(acc_lst))
     print ('Std train acc', np.std(acc_lst))
 
-def test_mcd_single(gnn, gen, n_classes, it):
+def test_single(gnn, gen, n_classes, it):
 
     start = time.time()
     W, labels = gen.sample_otf_single(is_training=False, cuda=torch.cuda.is_available())
@@ -165,22 +152,12 @@ def test_mcd_single(gnn, gen, n_classes, it):
     if (torch.cuda.is_available()):
         WW.cuda()
         x.cuda()
-        
-    # print ('input', input)
+
     pred_single = gnn(WW.type(dtype), x.type(dtype))
     labels_single = labels
 
     loss_test = compute_loss_multiclass(pred_single, labels_single, n_classes)
     acc_test = compute_accuracy_multiclass(pred_single, labels_single, n_classes)
-
-    elapsed = time.time() - start
-    # if (it % args.print_freq == 0):
-    #     info = ['iter', 'avg loss', 'avg acc', 'edge_density',
-    #             'noise', 'model', 'elapsed']
-    #     out = [it, loss_test, acc_test, args.edge_density,
-    #            args.noise, 'lGNN', elapsed]
-    #     print(template1.format(*info))
-    #     print(template2.format(*out))
 
     elapsed = time.time() - start
 
@@ -206,8 +183,7 @@ def test(gnn, gen, n_classes, iters=args.num_examples_test):
     loss_lst = np.zeros([iters])
     acc_lst = np.zeros([iters])
     for it in range(iters):
-        # inputs, labels, W = gen.sample_single(it, cuda=torch.cuda.is_available(), is_training=False)
-        loss_single, acc_single = test_mcd_single(gnn, gen, n_classes, it)
+        loss_single, acc_single = test_single(gnn, gen, n_classes, it)
         loss_lst[it] = loss_single
         acc_lst[it] = acc_single
         torch.cuda.empty_cache()
@@ -221,11 +197,8 @@ def count_parameters(model):
 
 
 if __name__ == '__main__':
-    # print (args.eval_vs_train)
 
-    ## One fixed generator
     gen = Generator()
-    ## generator setup
     gen.N_train = args.N_train
     gen.N_test = args.N_test
     gen.edge_density = args.edge_density
@@ -251,10 +224,8 @@ if __name__ == '__main__':
                 gnn.cuda()
         else:
             print ('No such a gnn exists; creating a brand new one')
-            if (args.generative_model == 'SBM'):
-                gnn = lGNN_multiclass(args.num_features, args.num_layers, args.J + 2)
-            elif (args.generative_model == 'SBM_multiclass'):
-                gnn = lGNN_multiclass(args.num_features, args.num_layers, args.J + 2, n_classes=args.n_classes)
+            if (args.generative_model == 'SBM_multiclass'):
+                gnn = GNN_multiclass(args.num_features, args.num_layers, args.J + 2, n_classes=args.n_classes)
             filename = 'gnn_J' + str(args.J) + '_lyr' + str(args.num_layers) + '_Ntr' + str(args.N_train) + '_num' + str(args.num_examples_train)
             path_plus_name = os.path.join(args.path_gnn, filename)
             if torch.cuda.is_available():
@@ -274,9 +245,7 @@ if __name__ == '__main__':
             print ('No such a gnn exists; creating a brand new one')
             filename = 'gnn_J' + str(args.J) + '_lyr' + str(args.num_layers) + '_Ntr' + str(args.N_train) + '_num' + str(args.num_examples_train)
             path_plus_name = os.path.join(args.path_gnn, filename)
-            if (args.generative_model == 'SBM'):
-                gnn = GNN_multiclass(args.num_features, args.num_layers, args.J + 2, n_classes=2)
-            elif (args.generative_model == 'SBM_multiclass'):
+            if (args.generative_model == 'SBM_multiclass'):
                 gnn = GNN_multiclass(args.num_features, args.num_layers, args.J + 2, n_classes=args.n_classes)
 
         print ('total num of params:', count_parameters(gnn))
@@ -284,9 +253,7 @@ if __name__ == '__main__':
         if torch.cuda.is_available():
             gnn.cuda()
         print ('Training begins')
-        if (args.generative_model == 'SBM'):
-            train(gnn, gen, 2)
-        elif (args.generative_model == 'SBM_multiclass'):
+        if (args.generative_model == 'SBM_multiclass'):
             train(gnn, gen, args.n_classes)
         print ('Saving gnn ' + filename)
         if torch.cuda.is_available():
